@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Ensures responsiveness -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valentine?</title>
+  <style>
+    /* Reset default margins and prevent scrolling */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+    }
+    /* Main container covers the full viewport.
+       Note the transition for background-color to achieve a slow fade. */
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background-color: white;
+      transition: background-color 3s ease;
+    }
+    /* Each heart is absolutely positioned and animated. */
+    .heart {
+      position: absolute;
+      font-size: 24px;
+      color: black;
+      text-shadow: 1px 1px 5px whitesmoke;
+      pointer-events: none;
+      /* Retain final animation state */
+      animation-fill-mode: forwards;
+
+    }
+    /* Animation keyframes for falling hearts */
+    @keyframes fall {
+      0% {
+        top: -50px;
+        opacity: 1;
+        transform:rotate(0deg);
+      }
+      100% {
+        top: var(--finalY);
+        opacity: 1;
+        transform:rotate(720deg);
+      }
+    }
+    /* Message container is initially hidden; will be revealed after the fade */
+    #message {
+      width:100%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      opacity:0;
+      color: white;
+      padding:4em;
+      background:rgba(0,0,0,0.8);
+      transition:2s all;
+      display:none;
+      font-family:roboto;
+    }
+    #message h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    #message button {
+      font-size: 1.5em;
+      padding: 10px 20px;
+      margin: 0 10px;
+      cursor: pointer;
+      font-family: roboto;
+    }
+    /* Style for the No button to appear greyed out */
+    #message button.grey {
+      background-color: #ccc;
+      color: #555;
+      border-radius:6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Container where the hearts fall -->
+  <div id="container"></div>
+  
+  <!-- Message overlay that appears once the fade completes -->
+  <div id="message">
+    <h1>Meli, will you be my Valentine?</h1>
+    <button id="yes">Yes</button>
+    <!-- The No button uses a grey class to look disabled even though it remains clickable -->
+    <button id="no" class="grey">No</button>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const container = document.getElementById("container");
+      const message = document.getElementById("message");
+      const h1 = message.querySelector("h1");
+      const yesBtn = document.getElementById("yes");
+      const noBtn = document.getElementById("no");
+
+      const totalDuration = 5000; // Total duration of 30 seconds for hearts to pile up
+      const heartInterval = 10;    // A new heart every 50ms
+
+      const startTime = Date.now();
+
+      let containerWidth = container.clientWidth;
+      let containerHeight = container.clientHeight;
+      window.addEventListener('resize', () => {
+        containerWidth = container.clientWidth;
+        containerHeight = container.clientHeight;
+      });
+
+      // Interval to create hearts until the total duration elapses
+      const intervalId = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= totalDuration) {
+          clearInterval(intervalId);
+          // Trigger a fade to black via the CSS transition on background-color.
+          container.style.backgroundColor = "black";
+          // After the fade (3 seconds) reveal the message overlay.
+          setTimeout(() => {
+            message.style.display = "block";
+            message.style.opacity = 0;
+          }, 3000);
+
+          setTimeout(() => {
+            message.style.opacity = 1;
+          }, 3500);
+          return;
+        }
+
+        // Create a new heart element
+        const heart = document.createElement("span");
+        heart.className = "heart";
+        heart.textContent = "♥";
+
+        // Random horizontal position using viewport width units for responsiveness.
+        const randomLeft = Math.random() * 100;
+        heart.style.left = randomLeft + "vw";
+
+        /* 
+          Calculate the heart’s landing position.
+          Hearts created earlier (small elapsed) fall further (landing near the bottom)
+          while later hearts land higher.
+        */
+        const fraction = elapsed / totalDuration;
+        const finalY = containerHeight - (fraction * containerHeight);
+        heart.style.setProperty("--finalY", finalY + "px");
+
+        // Compute animation duration based on the falling distance.
+        const distance = finalY + 50; // from starting position (-50px) to finalY
+        const speed = 300; // pixels per second (adjust for faster/slower fall)
+        let duration = distance / speed;
+        if (duration < 0.5) duration = 0.5;
+        heart.style.animation = `fall ${duration}s linear forwards`;
+
+        // Slightly vary font size for visual variety.
+        const fontSize = 70 + Math.random() * 70; // between 20px and 30px
+        heart.style.fontSize = fontSize + "px";
+
+        container.appendChild(heart);
+      }, heartInterval);
+
+      // When the user clicks "Yes", update the message accordingly.
+      yesBtn.addEventListener("click", () => {
+        h1.innerHTML = "Great Choice! <br>❤️<br>ilysmfrfr";
+      });
+      // When the user clicks "No", update the message accordingly.
+      noBtn.addEventListener("click", () => {
+        h1.textContent = "Not a real option 🤨";
+      });
+    });
+  </script>
+</body>
+</html>
