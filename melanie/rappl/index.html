@@ -19,7 +19,9 @@
       position: relative;
       width: 100vw;
       height: 100vh;
-      background-color: white;
+      /* background-color: white;
+       */
+      background-image: url("/pic.jpg");
       transition: background-color 3s ease;
     }
     /* Each heart is absolutely positioned and animated. */
@@ -27,11 +29,10 @@
       position: absolute;
       font-size: 24px;
       color: black;
-      text-shadow: 1px 1px 5px whitesmoke;
+      text-shadow: 1px 1px 5px red;
       pointer-events: none;
       /* Retain final animation state */
       animation-fill-mode: forwards;
-
     }
     /* Animation keyframes for falling hearts */
     @keyframes fall {
@@ -40,10 +41,17 @@
         opacity: 1;
         transform:rotate(0deg);
       }
+      25% {
+        transform: rotate(-45deg);
+      }
+      50% {
+        transform: rotate(45deg);
+      }
       100% {
         top: var(--finalY);
         opacity: 1;
-        transform:rotate(720deg);
+        transform:rotate(0deg);
+        text-shadow: 5px red;
       }
     }
     /* Message container is initially hidden; will be revealed after the fade */
@@ -88,7 +96,7 @@
   
   <!-- Message overlay that appears once the fade completes -->
   <div id="message">
-    <h1>Meli, will you be my Valentine?</h1>
+    <h1>Do you know that I love you a lot?</h1>
     <button id="yes">Yes</button>
     <!-- The No button uses a grey class to look disabled even though it remains clickable -->
     <button id="no" class="grey">No</button>
@@ -167,11 +175,11 @@
 
       // When the user clicks "Yes", update the message accordingly.
       yesBtn.addEventListener("click", () => {
-        h1.innerHTML = "Great Choice! <br>❤️<br>ilysmfrfr";
+        h1.innerHTML = "Good! <br>❤️<br>";
       });
       // When the user clicks "No", update the message accordingly.
       noBtn.addEventListener("click", () => {
-        h1.textContent = "Not a real option 🤨";
+        h1.textContent = "But I do though! 🤨";
       });
     });
   </script>
