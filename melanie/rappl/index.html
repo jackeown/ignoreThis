@@ -22,6 +22,10 @@
       /* background-color: white;
        */
       background-image: url("/pic.jpg");
+      /* background height 100% */
+      background-size: auto 100%;
+      background-repeat: no-repeat;
+      background-position: center;
       transition: background-color 3s ease;
     }
     /* Each heart is absolutely positioned and animated. */
@@ -34,6 +38,7 @@
       /* Retain final animation state */
       animation-fill-mode: forwards;
     }
+
     /* Animation keyframes for falling hearts */
     @keyframes fall {
       0% {
@@ -54,6 +59,7 @@
         text-shadow: 5px red;
       }
     }
+
     /* Message container is initially hidden; will be revealed after the fade */
     #message {
       width:100%;
