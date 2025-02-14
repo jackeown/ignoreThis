@@ -37,13 +37,13 @@
       pointer-events: none;
       /* Retain final animation state */
       animation-fill-mode: forwards;
+      opacity:0.2
     }
 
     /* Animation keyframes for falling hearts */
     @keyframes fall {
       0% {
         top: -50px;
-        opacity: 1;
         transform:rotate(0deg);
       }
       25% {
@@ -54,7 +54,6 @@
       }
       100% {
         top: var(--finalY);
-        opacity: 1;
         transform:rotate(0deg);
         text-shadow: 5px red;
       }
