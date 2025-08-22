@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Audio Photo Gallery</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100svh;
+      display: flex;
+      align-items: start;
+      justify-content: center;
+      padding: 16px;
+      overflow: auto;
+    }
+    @supports (height: 100dvh) { body { min-height: 100dvh; } }
+
+    .gallery-container {
+      position: relative;
+      width: min(95vw, 1000px);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 40px rgba(0,0,0,.3);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto;
+    }
+
+    .photo-display {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      max-height: 62vh;
+      overflow: hidden;
+      border-radius: 20px 20px 0 0;
+    }
+
+    @media (max-width: 768px) {
+      .photo-display {
+        aspect-ratio: 16 / 11;
+        max-height: 50vh;
+      }
+    }
+
+    /* .photo {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transform: scale(1.1);
+      transition: all .8s cubic-bezier(.4,0,.2,1);
+      will-change: transform, opacity;
+    } */
+
+    .photo {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;      /* ✅ show full image */
+        background: #000;         /* letterbox bars if needed */
+        opacity: 0;
+        transform: scale(1.1);
+        transition: all .8s cubic-bezier(.4,0,.2,1);
+        will-change: transform, opacity;
+    }
+
+
+
+
+    .photo.active { opacity: 1; transform: scale(1); }
+    .photo.prev   { transform: translateX(-100%) scale(.9); }
+    .photo.next   { transform: translateX(100%)  scale(.9); }
+
+    .controls {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+      background: rgba(0,0,0,.85);
+      padding: 16px 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+      backdrop-filter: blur(10px);
+      isolation: isolate;
+      contain: paint;
+    }
+
+    .nav-controls {
+      display: flex; justify-content: center; align-items: center;
+      gap: 20px; margin-bottom: 12px;
+    }
+
+    .nav-btn {
+      background: rgba(255,255,255,.2);
+      border: none;
+      width: 56px; height: 56px; border-radius: 50%;
+      color: #fff; font-size: 22px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .2s, background .2s;
+      flex: 0 0 auto;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,.3); transform: scale(1.06); }
+    .nav-btn:active { transform: scale(.95); }
+
+    .photo-counter { color:#fff; font-size:18px; font-weight:700; }
+
+    .track-info { color:#fff; text-align:center; margin-bottom: 10px; }
+    .track-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .track-artist { font-size:14px; opacity:.85; }
+
+    .audio-controls { display:flex; flex-direction:column; gap:12px; }
+
+    .player-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;         /* play | progress | time */
+      grid-template-areas: "play progress time";
+      align-items: center;
+      column-gap: 12px;
+      row-gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .play-btn {
+      grid-area: play;
+      flex: 0 0 auto;
+      background: linear-gradient(135deg, #ff6b6b, #ff8787);
+      border:none; width:50px; height:50px; border-radius:50%;
+      color:#fff; font-size:20px; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 4px 15px rgba(255,107,107,.3);
+    }
+    .play-btn:hover { transform: scale(1.06); }
+    .play-btn.playing {
+      background: linear-gradient(135deg, #4ecdc4, #44a08d);
+      box-shadow: 0 4px 15px rgba(78,205,196,.3);
+    }
+
+    .progress-container {
+      grid-area: progress;
+      height: 4px;
+      max-height: 6px;
+      background: rgba(255,255,255,.25);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-container::before {
+      content: "";
+      position: absolute;
+      inset: -8px 0; /* larger touch target */
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+      border-radius: 2px;
+      width: 0%;
+      transition: width .1s ease;
+    }
+
+    .time-display {
+      grid-area: time;
+      color: #fff;
+      font-size: 14px;
+      min-width: 80px;
+      text-align: right;
+    }
+
+    .volume-container { display:flex; align-items:center; gap:10px; }
+    .volume-btn {
+      background:none; border:none; color:#fff;
+      font-size:18px; cursor:pointer; padding:5px;
+      flex: 0 0 auto;
+    }
+
+    .volume-slider {
+      width: 140px;
+      background: transparent; outline: none; -webkit-appearance: none;
+    }
+    .volume-slider::-webkit-slider-runnable-track {
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,.3);
+    }
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px; border-radius: 50%; background: #ff6b6b;
+      margin-top: -5px; box-shadow: 0 0 0 3px rgba(255,255,255,.2);
+    }
+    .volume-slider::-moz-range-track {
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,.3);
+    }
+    .volume-slider::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%; background: #ff6b6b; border:none;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.2);
+    }
+
+    .loading {
+      position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+      color:#fff; font-size:18px; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:1} }
+
+    @media (max-width: 480px) {
+      .player-row {
+        grid-template-columns: auto auto;           /* play | time */
+        grid-template-areas:
+          "play time"
+          "progress progress";                      /* seek bar below */
+      }
+      .time-display { justify-self: end; }
+    }
+  </style>
+</head>
+<body>
+  <div class="gallery-container">
+    <div class="photo-display">
+      <div class="loading">Loading gallery...</div>
+    </div>
+
+    <div class="controls">
+      <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn">‹</button>
+        <div class="photo-counter"><span id="currentPhoto">1</span> / <span id="totalPhotos">5</span></div>
+        <button class="nav-btn" id="nextBtn">›</button>
+      </div>
+
+      <div class="track-info">
+        <div class="track-title" id="trackTitle">Loading...</div>
+        <div class="track-artist" id="trackArtist">Please wait</div>
+      </div>
+
+      <div class="audio-controls">
+        <div class="player-row">
+          <button class="play-btn" id="playBtn">▶</button>
+          <div class="time-display">
+            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+          </div>
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+        </div>
+
+        <div class="volume-container">
+          <button class="volume-btn" id="volumeBtn">🔊</button>
+          <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="0.7" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class AudioPhotoGallery {
+      constructor() {
+        this.currentIndex = 0;
+        this.photos = [];
+        this.tracks = [];
+
+        // Single shared audio element
+        this.audio = new Audio();
+        this.audio.preload = 'metadata';
+        this.audio.volume = 0.7;
+
+        this.isSeeking = false;
+
+        this.initializeGallery();
+        this.setupEventListeners();
+      }
+
+      initializeGallery() {
+        this.photos = [
+            { src: './photos/1.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/2.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/3.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/4.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/5.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/6.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/7.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/8.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/9.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/10.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/11.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/12.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/13.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/14.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/15.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/16.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/17.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/18.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/19.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/1.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/2.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/3.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/4.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/5.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/6.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/7.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/8.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/9.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/10.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/11.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/12.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/13.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/14.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/15.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/16.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/17.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/18.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/19.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/1.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/2.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/3.jpg', alt: 'Mountain Landscape' },
+            { src: './photos/4.jpg', alt: 'Mountain Landscape' },
+        ];
+
+        this.tracks = [
+            { src: './audio/Friday March 21.mp3', title: 'Friday', artist: 'March 21' },
+            { src: './audio/Friday March 21 (2).mp3', title: 'Friday', artist: 'March 21 (2)' },
+            { src: './audio/Saturday March 22.mp3', title: 'Saturday', artist: 'March 22' },
+            { src: './audio/Saturday March 22 (2).mp3', title: 'Saturday', artist: 'March 22 (2)' },
+            { src: './audio/Sunday March 23.mp3', title: 'Sunday', artist: 'March 23' },
+            { src: './audio/Sunday March 23-2.mp3', title: 'Sunday', artist: 'March 23 (2)' },
+            { src: './audio/Sunday March 23-3.mp3', title: 'Sunday', artist: 'March 23 (3)' },
+            { src: './audio/Monday March 24.mp3', title: 'Monday', artist: 'March 24' },
+            { src: './audio/Tuesday March 25.mp3', title: 'Tuesday', artist: 'March 25' },
+            { src: './audio/Wednesday March 26.mp3', title: 'Wednesday', artist: 'March 26' },
+            { src: './audio/Thursday March 27.mp3', title: 'Thursday', artist: 'March 27' },
+            { src: './audio/Friday March 28th.mp3', title: 'Friday', artist: 'March 28' },
+            { src: './audio/Sunday March 30.mp3', title: 'Sunday', artist: 'March 30' },
+            { src: './audio/Monday March 31.mp3', title: 'Monday', artist: 'March 31' },
+            { src: './audio/Tuesday April 1.mp3', title: 'Tuesday', artist: 'April 1' },
+            { src: './audio/Wednesday April 2.mp3', title: 'Wednesday', artist: 'April 2' },
+            { src: './audio/Friday April 4.mp3', title: 'Friday', artist: 'April 4' },
+            { src: './audio/Saturday April 5th.mp3', title: 'Saturday', artist: 'April 5' },
+            { src: './audio/Sunday April 6.mp3', title: 'Sunday', artist: 'April 6' },
+            { src: './audio/Sunday April 6 (2).mp3', title: 'Sunday', artist: 'April 6 (2)' },
+            { src: './audio/Tuesday April 8.mp3', title: 'Tuesday', artist: 'April 8' },
+            { src: './audio/Thursday April 10.mp3', title: 'Thursday', artist: 'April 10' },
+            { src: './audio/Friday April 11.mp3', title: 'Friday', artist: 'April 11' },
+            { src: './audio/Saturday April 12.mp3', title: 'Saturday', artist: 'April 12' },
+            { src: './audio/Sunday April 13.mp3', title: 'Sunday', artist: 'April 13' },
+            { src: './audio/Thursday April 17.mp3', title: 'Thursday', artist: 'April 17' },
+            { src: './audio/Sunday April 20.mp3', title: 'Sunday', artist: 'April 20' },
+            { src: './audio/Tuesday April 15.mp3', title: 'Tuesday', artist: 'April 15' }, /* moved earlier, belongs April 15 */
+            { src: './audio/Thursday April 24.mp3', title: 'Thursday', artist: 'April 24' },
+            { src: './audio/Wednesday April 23.mp3', title: 'Wednesday', artist: 'April 23' },
+            { src: './audio/Tuesday April 29.mp3', title: 'Tuesday', artist: 'April 29' },
+            { src: './audio/Friday June 6th.mp3', title: 'Friday', artist: 'June 6' },
+            { src: './audio/Friday May 23.mp3', title: 'Friday', artist: 'May 23' }, /* belongs before June, corrected order */
+            { src: './audio/Friday August 1.mp3', title: 'Friday', artist: 'August 1' },
+            { src: './audio/Saturday August 9.mp3', title: 'Saturday', artist: 'August 9' },
+            { src: './audio/Monday August 11.mp3', title: 'Monday', artist: 'August 11' },
+            { src: './audio/Tuesday August 12.mp3', title: 'Tuesday', artist: 'August 12' },
+            { src: './audio/Thursday August 14.mp3', title: 'Thursday', artist: 'August 14' },
+            { src: './audio/Monday August 18.mp3', title: 'Monday', artist: 'August 18' },
+            { src: './audio/Tuesday August 19.mp3', title: 'Tuesday', artist: 'August 19' },
+            { src: './audio/Thursday August 21.mp3', title: 'Thursday', artist: 'August 21' },
+            { src: './audio/Thursday August 21 (2).mp3', title: 'Thursday', artist: 'August 21 (2)' },
+        ];
+
+
+        this.loadPhotos();
+        this.loadAudio();
+        this.updateDisplay();
+      }
+
+      loadPhotos() {
+        const photoDisplay = document.querySelector('.photo-display');
+        photoDisplay.innerHTML = '';
+        this.photos.forEach((photo, index) => {
+          const img = document.createElement('img');
+          img.src = photo.src;
+          img.alt = photo.alt;
+          img.loading = 'eager';
+          img.decoding = 'async';
+          img.className = 'photo';
+          if (index === 0) img.classList.add('active');
+          photoDisplay.appendChild(img);
+        });
+      }
+
+      loadAudio() {
+        // Load track for current slide
+        const { src } = this.tracks[this.currentIndex];
+        this.audio.src = src;
+        this.audio.currentTime = 0;
+
+        // Update UI when metadata is ready
+        this.audio.addEventListener('loadedmetadata', () => {
+          this.updateTimeLabels();
+        }, { once: true });
+
+        // Keep progress bar moving
+        this.audio.removeEventListener('timeupdate', this._onTimeUpdate);
+        this._onTimeUpdate = () => this.updateProgress();
+        this.audio.addEventListener('timeupdate', this._onTimeUpdate);
+
+        // Keep play/pause button state in sync
+        this.audio.removeEventListener('play', this._onPlay);
+        this.audio.removeEventListener('pause', this._onPause);
+        this._onPlay  = () => this.updatePlayButton(true);
+        this._onPause = () => this.updatePlayButton(false);
+        this.audio.addEventListener('play', this._onPlay);
+        this.audio.addEventListener('pause', this._onPause);
+
+        // When track ends, show paused state
+        this.audio.removeEventListener('ended', this._onEnded);
+        this._onEnded = () => this.updatePlayButton(false);
+        this.audio.addEventListener('ended', this._onEnded);
+
+        this.updateProgress();
+      }
+
+      setupEventListeners() {
+        document.getElementById('prevBtn').addEventListener('click', () => this.previousPhoto());
+        document.getElementById('nextBtn').addEventListener('click', () => this.nextPhoto());
+        document.getElementById('playBtn').addEventListener('click', () => this.togglePlay());
+
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+          const v = parseFloat(e.target.value);
+          this.audio.volume = isNaN(v) ? 0.7 : v;
+        });
+
+        const progressContainer = document.getElementById('progressContainer');
+        progressContainer.addEventListener('click', (e) => this.seekAudio(e));
+
+        // Optional: support drag seek
+        progressContainer.addEventListener('pointerdown', (e) => {
+          this.isSeeking = true;
+          this.seekAudio(e);
+        });
+        window.addEventListener('pointermove', (e) => {
+          if (this.isSeeking) this.seekAudio(e);
+        });
+        window.addEventListener('pointerup', () => { this.isSeeking = false; });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft') this.previousPhoto();
+          else if (e.key === 'ArrowRight') this.nextPhoto();
+          else if (e.key === ' ') { e.preventDefault(); this.togglePlay(); }
+        });
+      }
+
+      previousPhoto() {
+        this.currentIndex = (this.currentIndex - 1 + this.photos.length) % this.photos.length;
+        this.updateDisplay();
+        this.loadAudio();
+      }
+
+      nextPhoto() {
+        this.currentIndex = (this.currentIndex + 1) % this.photos.length;
+        this.updateDisplay();
+        this.loadAudio();
+      }
+
+      updateDisplay() {
+        const photos = document.querySelectorAll('.photo');
+        photos.forEach((photo, index) => {
+          photo.classList.remove('active', 'prev', 'next');
+          if (index === this.currentIndex) photo.classList.add('active');
+          else if (index === (this.currentIndex - 1 + this.photos.length) % this.photos.length) photo.classList.add('prev');
+          else if (index === (this.currentIndex + 1) % this.photos.length) photo.classList.add('next');
+        });
+
+        document.getElementById('currentPhoto').textContent = this.currentIndex + 1;
+        document.getElementById('totalPhotos').textContent = this.photos.length;
+
+        const track = this.tracks[this.currentIndex];
+        document.getElementById('trackTitle').textContent = track.title;
+        document.getElementById('trackArtist').textContent = track.artist;
+        this.updateTimeLabels();
+      }
+
+      togglePlay() {
+        if (this.audio.paused) {
+          this.audio.play().catch(() => {}); // ignore autoplay block errors until user interacts
+        } else {
+          this.audio.pause();
+        }
+      }
+
+      updatePlayButton(isPlaying) {
+        const playBtn = document.getElementById('playBtn');
+        const playing = typeof isPlaying === 'boolean' ? isPlaying : !this.audio.paused;
+        playBtn.textContent = playing ? '⏸' : '▶';
+        playBtn.classList.toggle('playing', playing);
+      }
+
+      seekAudio(e) {
+        const rect = document.getElementById('progressContainer').getBoundingClientRect();
+        const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+        const pct = rect.width ? x / rect.width : 0;
+        if (!isNaN(this.audio.duration) && isFinite(this.audio.duration)) {
+          this.audio.currentTime = pct * this.audio.duration;
+          this.updateProgress();
+        }
+      }
+
+      updateProgress() {
+        const bar = document.getElementById('progressBar');
+        const current = this.audio.currentTime || 0;
+        const duration = this.audio.duration || 0;
+        const pct = duration ? (current / duration) * 100 : 0;
+        bar.style.width = pct + '%';
+        this.updateTimeLabels();
+      }
+
+      updateTimeLabels() {
+        const current = this.audio.currentTime || 0;
+        const duration = this.audio.duration || 0;
+        document.getElementById('currentTime').textContent = this.formatTime(current);
+        document.getElementById('duration').textContent = isFinite(duration) && duration > 0 ? this.formatTime(duration) : '0:00';
+      }
+
+      formatTime(seconds) {
+        const m = Math.floor(seconds / 60) || 0;
+        const s = Math.floor(seconds % 60) || 0;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { new AudioPhotoGallery(); });
+  </script>
+</body>
+</html>
